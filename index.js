@@ -1,10 +1,12 @@
-var fs      = require("fs"),
-    path    = require("path"),
-    express = require("express"),
-    archiver = require("archiver");
+var fs            = require("fs"),
+    path          = require("path"),
+    express       = require("express"),
+    archiver      = require("archiver"),
+    { promisify } = require("util");
 
-var app     = express(),
-    port    = process.env.PORT || 8000;
+var app           = express(),
+    port          = process.env.PORT || 8000;
+    readdir       = promisify(fs.readdir)
 
 app.get("/download/:filename", function (req, res) {
     // Grab filename from params
@@ -28,19 +30,32 @@ app.get("/download/:filename", function (req, res) {
 })
 
 // Send mutliple files in a zip
-app.get("/multiple", function (req, res) {
+app.get("/multiple", async function (req, res) {
   // Create write stream
   const output = fs.createWriteStream(path.join(__dirname, "temp", "download.zip"))
   const fileStream = fs.createReadStream(path.join(__dirname, "files", "a.txt"))
-  const anotherFileStream = fs.createReadStream(path.join(__dirname, "files", "b.txt"))
+  // const anotherFileStream = fs.createReadStream(path.join(__dirname, "files", "b.txt"))
+
+  // Read file in directory
+  const files = await readdir(path.join(__dirname, "files"))
+
+  if (files.length === 0) {
+    return res.status(200).json({
+      message: "No files to download"
+    })
+  }
 
   // archive.pipe(output)
   // archive.
   const archive = archiver('zip', { gzip: true, zlib: { level: 9 } })
 
   // Append stream
-  archive.append(fileStream, { name: "a.txt" })
-  archive.append(anotherFileStream, { name: "b.txt" })
+  // archive.append(fileStream, { name: "a.txt" })
+  // archive.append(anotherFileStream, { name: "b.txt" })
+  for (let i = 0; i < files.length; i++) {
+    const fileStream = fs.createReadStream(path.join(__dirname, "files", files[i]))
+    archive.append(fileStream, { name: files[i] })
+  }
 
   archive.finalize()
 
