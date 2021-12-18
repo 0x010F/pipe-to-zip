@@ -32,7 +32,7 @@ app.get("/download/:filename", function (req, res) {
 // Send mutliple files in a zip
 app.get("/multiple", async function (req, res) {
   // Create write stream
-  const output = fs.createWriteStream(path.join(__dirname, "temp", "download.zip"))
+  // const output = fs.createWriteStream(path.join(__dirname, "temp", "download.zip"))
   const fileStream = fs.createReadStream(path.join(__dirname, "files", "a.txt"))
   // const anotherFileStream = fs.createReadStream(path.join(__dirname, "files", "b.txt"))
 
