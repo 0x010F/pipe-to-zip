@@ -2,17 +2,21 @@ var fs            = require("fs"),
     path          = require("path"),
     express       = require("express"),
     archiver      = require("archiver"),
-    { promisify } = require("util");
+    ytdl          = require("ytdl-core"),
+    { promisify } = require("util"),
+    { Transform }  = require("stream");
 
 var app           = express(),
     port          = process.env.PORT || 8000;
     readdir       = promisify(fs.readdir)
 
 app.get("/download/:filename", function (req, res) {
-    // Grab filename from params
-    if (!req.params.filename && !req.params.filename.trim()) {
+    // Check
+    if (!req.params.filename || !req.params.filename.trim()) {
       return res.status(404).json({ message: "Heck!" })
     }
+
+    // Grab filename from params
     const fileName = req.params.filename
     console.log(fileName)
 
@@ -70,16 +74,60 @@ app.get("/multiple", async function (req, res) {
     console.log("Deleting file")
 
     // Delete file
-    fs.unlink(path.join(__dirname, "temp", "download.zip"), function (err) {
-      if (err) throw err;
-      console.log("File deleted successfully")
-    })
+    // fs.unlink(path.join(__dirname, "temp", "download.zip"), function (err) {
+    //   if (err) throw err;
+    //   console.log("File deleted successfully")
+    // })
 
     return res.end()
   })
 
   // Download
   archive.pipe(res)
+})
+
+app.get("/download", async function (req, res) {
+  try {
+    const ytURL = req.query.ytURL
+
+    // Check
+    if (!req.query.ytURL || !req.query.ytURL.trim()) {
+      return res.status(404).json({
+        message: "Heck!"
+      })
+    }
+
+    // const stream = new Transform()
+    // const stream = fs.createWriteStream("video.mp4")
+
+    // ytdl(ytURL).pipe(videoStream => {
+    //   // console.log(data)
+    //   videoStream.on("data", function (chunk) {
+    //     stream.push(chunk)
+    //   })
+    // })
+
+    const archive = archiver("zip", { gzip: true, zlib: { level: 9 } })
+
+    // Append
+    const stream1 = ytdl(ytURL, { filter: format => format.container === 'mp4' })
+    const stream2 = ytdl(ytURL, { filter: format => format.container === 'mp4' })
+
+    // Append
+    archive.append(stream1, { name: "video1.mp4" })
+    archive.append(stream2, { name: "video2.mp4" })
+
+    archive.finalize()
+
+    res.setHeader("Content-disposition", `attachment; filename=download.zip`)
+    res.setHeader("Content-type", "application/zip")
+
+    // Download
+    archive.pipe(res)
+
+  } catch (err) {
+    console.log(err)
+  }
 })
 
 // Listen on port
